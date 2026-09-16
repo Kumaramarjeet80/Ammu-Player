@@ -26,20 +26,18 @@ jobs:
       - name: Install Dependencies & Setup Capacitor
         run: |
           npm install
-          npx cap add android
-          npx cap update android
-          npx cap copy
+          npx cap add android || true
+          npx cap sync android
 
-      - name: Inject Foreground & Media Permissions
+      - name: Inject Hardware & Background Audio Permissions
         run: |
           sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />' android/app/src/main/AndroidManifest.xml
-          sed -i 's/<activity /<activity android:hardwareAccelerated="true" /' android/app/src/main/AndroidManifest.xml
 
       - name: Build APK with Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload Output APK
         uses: actions/upload-artifact@v4
