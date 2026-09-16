@@ -4394,6 +4394,7 @@ function playTrackFromBrowsing(idx) {
   playTrackDirect(browsingTracks[idx]);
 }
 
+// High-Performance Zero-Copy Audio Stream Loader
 async function playTrackDirect(trk) {
   if (!trk || trk.isMissing || (!trk.blob || trk.blob.size === 0)) {
     showNotification(`Cannot play: "${(trk && trk.name) || 'Track'}" is missing from storage.`);
@@ -4404,28 +4405,21 @@ async function playTrackDirect(trk) {
 
   if (currentPlayingTrack && currentPlayingTrack.name === trk.name && audio.src) {
     if (audio.paused) {
-      audio.play().catch(() => {});
       cleanAudioBufferResume();
+      audio.play().catch(() => {});
     }
     return;
   }
 
-  // Preload entire audio buffer to eliminate disk stalls and audio crackling
-  try {
-    const arrayBuffer = await trk.blob.arrayBuffer();
-    const memoryBlob = new Blob([arrayBuffer], { type: trk.blob.type || 'audio/mp3' });
-    
-    if (currentActiveBlobUrl) {
-      URL.revokeObjectURL(currentActiveBlobUrl);
-    }
-    currentActiveBlobUrl = URL.createObjectURL(memoryBlob);
-    audio.src = currentActiveBlobUrl;
-  } catch (_) {
-    if (currentActiveBlobUrl) URL.revokeObjectURL(currentActiveBlobUrl);
-    currentActiveBlobUrl = URL.createObjectURL(trk.blob);
-    audio.src = currentActiveBlobUrl;
+  // Revoke previous URL to release native memory immediately
+  if (currentActiveBlobUrl) {
+    URL.revokeObjectURL(currentActiveBlobUrl);
+    currentActiveBlobUrl = null;
   }
 
+  // Direct fast streaming: zero copy, no buffering delays or speed drops
+  currentActiveBlobUrl = URL.createObjectURL(trk.blob);
+  audio.src = currentActiveBlobUrl;
   currentPlayingTrack = trk;
   audio.playbackRate = speedList[currentSpeedIndex];
 
@@ -4449,7 +4443,10 @@ async function playTrackDirect(trk) {
   loadLyricsForCurrent();
   await loadTimestampsForCurrent();
   renderSeekTicks();
-  renderWaveformForTrack(trk.blob);
+  
+  // Offload waveform extraction so it does not stutter active playback
+  setTimeout(() => renderWaveformForTrack(trk.blob), 100);
+
   updateMediaSession();
   updateAmbientGlow(boxCover);
 
