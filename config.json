@@ -1,0 +1,6 @@
+{
+  "appId": "com.amarjeet.ammu",
+  "appName": "Ammu",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
