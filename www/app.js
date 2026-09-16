@@ -3,7 +3,21 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
   });
 }
+async function requestNativeNotificationPermission() {
+  if ('Notification' in window) {
+    if (Notification.permission !== 'granted') {
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+          showNotification('Notifications enabled for lock screen controls!');
+        }
+      } catch (_) {}
+    }
+  }
+}
 
+// Call on startup
+requestNativeNotificationPermission();
 // =============================================================
 // DOM REFERENCES (TOP-LEVEL INITIALIZATION)
 // =============================================================
@@ -5690,6 +5704,28 @@ if (btnResetEqCard) {
 // =============================================================
 initDB().then(async () => {
   try {
+    await checkOnboarding();
+    await loadAppBranding();
+    await loadDevProfile();
+    await loadPlaylists();
+    checkResumeSession();
+    
+    applyDSPState(false);
+    setVolume(100);
+    drawVivoSplineCurve();
+    loadCustomEqCarousel();
+  } catch (err) {
+    console.error('System Boot Exception:', err);
+  }
+});
+// =============================================================
+// SYSTEM BOOT (SAFE STARTUP)
+// =============================================================
+initDB().then(async () => {
+  try {
+    // Request permission as soon as the app starts
+    await requestNativeNotificationPermission();
+
     await checkOnboarding();
     await loadAppBranding();
     await loadDevProfile();
